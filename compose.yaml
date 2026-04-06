@@ -1,0 +1,73 @@
+services:
+  web:
+    build:
+      context: ./frontend
+    ports:
+      - 5173:5173
+    depends_on:
+      - server
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    develop:
+      watch:
+        - path: ./frontend/package.json
+          action: rebuild
+        - path: ./frontend/package-lock.json
+          action: rebuild
+        - path: ./frontend
+          target: /app
+          action: sync
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    networks:
+      - purchasingAgent-network
+
+  server:
+    build:
+      context: ./backend
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: laravel_db
+      DB_USERNAME: laravel_user
+      DB_PASSWORD: laravel_pass
+    volumes:
+      - ./backend:/var/www/html
+    develop:
+      watch:
+        - path: ./backend/composer.json
+          action: rebuild
+        - path: ./backend/composer.lock
+          action: rebuild
+        - path: ./backend
+          target: /var/www/html
+          action: sync
+    networks:
+      - purchasingAgent-network
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: laravel_db
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: laravel_pass
+    ports:
+      - "3309:3306"
+    volumes:
+      - purchasing_agent_data:/var/lib/mysql
+    networks:
+      - purchasingAgent-network
+
+volumes:
+  purchasing_agent_data:
+
+networks:
+  purchasingAgent-network:
+    driver: bridge
